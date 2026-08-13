@@ -16,6 +16,7 @@ concurrency:
 
 permissions:
   actions: write   # noetig, damit der Lauf sich selbst neu starten kann
+  contents: read   # noetig fuer actions/checkout bei privaten Repos
 
 jobs:
   monitor:
