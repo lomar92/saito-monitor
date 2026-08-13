@@ -54,7 +54,7 @@ jobs:
           DISCORD_MENTION: "@everyone"
           POLL_INTERVAL: "12"
           MAX_RUNTIME: ${{ inputs.watch != '' && '60' || '20400' }}  # Test: 60s, Normal: 5h40m
-          ALERT_COOLDOWN: "900"
+          ALERT_COOLDOWN: "180"
           QUANTITY: "2"
           HEARTBEAT_HOURS: "0"      # aus - die Startmeldung alle 5h40m genuegt
           STATUS_EVERY: "300"       # alle 5 Min eine Statuszeile ins Protokoll
