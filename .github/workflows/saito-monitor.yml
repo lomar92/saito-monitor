@@ -71,10 +71,11 @@ jobs:
           path: saito_state.json
           key: saito-state-${{ github.run_id }}
 
-      # Startet den naechsten Lauf, sobald dieser endet - auch nach einem Fehler.
-      # Nur bei normalen Laeufen (kein Test-Handle gesetzt).
+      # Startet den naechsten Lauf bei normalem Ende oder Fehler.
+      # Nicht bei Cancel (damit man den Monitor sauber stoppen kann)
+      # und nicht bei Testlaeufen (watch-Input gesetzt).
       - name: Naechsten Lauf starten
-        if: always() && inputs.watch == ''
+        if: (success() || failure()) && inputs.watch == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run saito-monitor.yml --ref ${{ github.ref_name }}
