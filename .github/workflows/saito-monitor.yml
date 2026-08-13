@@ -53,7 +53,7 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_MENTION: "@everyone"
           POLL_INTERVAL: "12"
-          MAX_RUNTIME: "20400"      # 5h40m, dann sauberer Ausstieg
+          MAX_RUNTIME: ${{ inputs.watch != '' && '60' || '20400' }}  # Test: 60s, Normal: 5h40m
           ALERT_COOLDOWN: "900"
           QUANTITY: "1"
           HEARTBEAT_HOURS: "0"      # aus - die Startmeldung alle 5h40m genuegt
