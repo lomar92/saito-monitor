@@ -1,0 +1,66 @@
+name: Saito Legends Restock Monitor
+
+# Laeuft rund um die Uhr. Ein GitHub-Actions-Job darf maximal 6 Stunden laufen,
+# deshalb laeuft der Monitor 5h40m und startet sich danach selbst neu.
+# Der Zeitplan alle 3 Stunden ist das Sicherheitsnetz, falls ein Lauf abstuerzt.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */3 * * *"
+
+# Verhindert, dass zwei Laeufe gleichzeitig laufen und doppelt alarmieren.
+concurrency:
+  group: saito-monitor
+  cancel-in-progress: false
+
+permissions:
+  actions: write   # noetig, damit der Lauf sich selbst neu starten kann
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Zustand zwischen den Laeufen erhalten, damit nach einem Neustart nicht
+      # erneut fuer denselben Restock alarmiert wird.
+      - name: Zustand laden
+        uses: actions/cache/restore@v4
+        with:
+          path: saito_state.json
+          key: saito-state-${{ github.run_id }}
+          restore-keys: saito-state-
+
+      - name: Monitor starten
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_MENTION: "@everyone"
+          POLL_INTERVAL: "12"
+          MAX_RUNTIME: "20400"      # 5h40m, dann sauberer Ausstieg
+          ALERT_COOLDOWN: "900"
+          QUANTITY: "1"
+          HEARTBEAT_HOURS: "0"      # aus - die Startmeldung alle 5h40m genuegt
+          STATE_FILE: saito_state.json
+          # WATCH: "ALL"            # einkommentieren fuer den gesamten Shop
+        run: python saito_monitor.py
+
+      - name: Zustand sichern
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: saito_state.json
+          key: saito-state-${{ github.run_id }}
+
+      # Startet den naechsten Lauf, sobald dieser endet - auch nach einem Fehler.
+      - name: Naechsten Lauf starten
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run saito-monitor.yml --ref ${{ github.ref_name }}
