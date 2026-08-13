@@ -25,7 +25,9 @@ Konfiguration ueber Umgebungsvariablen:
                                   erneut alarmiert wird
   QUANTITY             (opt, 1)   Menge im Cart-Permalink
   STATE_FILE           (opt)      Pfad fuer Zustandsdatei
-  HEARTBEAT_HOURS      (opt, 0)   Lebenszeichen alle N Stunden (0 = aus)
+  HEARTBEAT_HOURS      (opt, 0)   Lebenszeichen an Discord alle N Stunden
+  STATUS_EVERY         (opt, 300) Statuszeile im Protokoll alle N Sekunden.
+                                  Nur Log, nicht Discord. 0 = aus.
 
   TELEGRAM_BOT_TOKEN   (opt)      Nur falls du zusaetzlich Telegram willst
   TELEGRAM_CHAT_ID     (opt)
@@ -60,6 +62,8 @@ MAX_RUNTIME = float(os.environ.get("MAX_RUNTIME", "0"))
 ALERT_COOLDOWN = float(os.environ.get("ALERT_COOLDOWN", "900"))
 QUANTITY = int(os.environ.get("QUANTITY", "1"))
 HEARTBEAT_HOURS = float(os.environ.get("HEARTBEAT_HOURS", "0"))
+# Statuszeile im Protokoll alle N Sekunden (0 = aus). Geht nicht an Discord.
+STATUS_EVERY = float(os.environ.get("STATUS_EVERY", "300"))
 STATE_FILE = os.environ.get(
     "STATE_FILE",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "saito_state.json"),
@@ -492,17 +496,37 @@ def main():
 
     consecutive_errors = 0
 
+    checks = 0
+    failed = 0
+    last_status = time.time()
+
     while True:
         loop_start = time.time()
         try:
             run_once(state)
             consecutive_errors = 0
+            checks += 1
         except urllib.error.HTTPError as exc:
             consecutive_errors += 1
+            failed += 1
             log(f"!! HTTP {exc.code} beim Abruf (Fehler #{consecutive_errors})")
         except Exception as exc:  # noqa: BLE001
             consecutive_errors += 1
+            failed += 1
             log(f"!! Fehler: {exc!r} (Fehler #{consecutive_errors})")
+
+        # Regelmaessiges Lebenszeichen im Protokoll (nicht in Discord), damit
+        # man im Actions-Log sehen kann, dass tatsaechlich gepollt wird.
+        if STATUS_EVERY > 0 and (time.time() - last_status) >= STATUS_EVERY:
+            last_status = time.time()
+            minuten = (time.time() - started) / 60
+            rate = checks / minuten if minuten > 0 else 0
+            bestand = sum(1 for ok in state["available"].values() if ok)
+            log(
+                f"[Status] {checks} Abfragen in {minuten:.0f} Min "
+                f"({rate:.1f}/Min), {failed} Fehler, "
+                f"{bestand} von {len(state['available'])} Varianten auf Lager"
+            )
 
         if consecutive_errors == 20:
             notify_text(

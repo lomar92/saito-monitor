@@ -6,6 +6,15 @@ name: Saito Legends Restock Monitor
 
 on:
   workflow_dispatch:
+    inputs:
+      watch:
+        description: >-
+          Nur fuer Tests: Produkt-Handle, das ueberwacht werden soll.
+          Leer lassen fuer den Normalbetrieb. Beispiel zum Pruefen der
+          Alarmkette: saito-legends-classic-sticker (ist auf Lager, loest
+          also sofort einen echten Alarm aus).
+        required: false
+        default: ""
   schedule:
     - cron: "0 */3 * * *"
 
@@ -48,8 +57,11 @@ jobs:
           ALERT_COOLDOWN: "900"
           QUANTITY: "1"
           HEARTBEAT_HOURS: "0"      # aus - die Startmeldung alle 5h40m genuegt
+          STATUS_EVERY: "300"       # alle 5 Min eine Statuszeile ins Protokoll
           STATE_FILE: saito_state.json
-          # WATCH: "ALL"            # einkommentieren fuer den gesamten Shop
+          # Leer im Normalbetrieb -> die drei 1st-Edition-Boxen.
+          # Beim manuellen Start kann hier ein Testprodukt gesetzt werden.
+          WATCH: ${{ inputs.watch }}
         run: python saito_monitor.py
 
       - name: Zustand sichern
