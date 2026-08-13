@@ -1,65 +1,65 @@
 # Saito Legends Restock Monitor
 
-Überwacht den Shopify-Shop von [saitolegends.com](https://saitolegends.com) und schickt sofort eine Discord-Benachrichtigung mit Checkout-Direktlink, sobald ein überwachtes Produkt wieder auf Lager geht.
+Monitors the Shopify store at [saitolegends.com](https://saitolegends.com) and instantly sends a Discord notification with a direct checkout link as soon as a tracked product comes back in stock.
 
 ---
 
-## Wie es funktioniert
+## How it works
 
-Das Skript fragt alle 12 Sekunden die öffentliche Shopify-API (`/products.json`) ab und vergleicht den Lagerstatus mit dem zuletzt gespeicherten Zustand. Wechselt eine Variante von „ausverkauft" auf „verfügbar", kommt sofort ein Discord-Ping mit einem Link der das Produkt direkt in den Warenkorb legt.
+The script polls the public Shopify API (`/products.json`) every 12 seconds and compares the stock status against the last saved state. When a variant switches from "out of stock" to "available", a Discord ping is sent immediately with a link that places the product directly into the cart.
 
 ---
 
-## Einrichtung
+## Setup
 
-### 1. Discord-Webhook
+### 1. Discord Webhook
 
-1. Discord öffnen → Eigenen Server anlegen (privat, nur für dich)
-2. Kanal → **Kanal bearbeiten** → **Integrationen** → **Webhooks** → **Neuer Webhook**
-3. Webhook-URL kopieren
+1. Open Discord → Create your own server (private, just for you)
+2. Channel → **Edit Channel** → **Integrations** → **Webhooks** → **New Webhook**
+3. Copy the webhook URL
 
-### 2. GitHub-Secret hinterlegen
+### 2. Add GitHub Secret
 
 **Settings → Secrets and variables → Actions → New repository secret**
 
-| Name | Wert |
+| Name | Value |
 |---|---|
-| `DISCORD_WEBHOOK_URL` | deine kopierte Webhook-URL |
+| `DISCORD_WEBHOOK_URL` | your copied webhook URL |
 
-### 3. Workflow-Berechtigungen setzen
+### 3. Set Workflow Permissions
 
 **Settings → Actions → General → Workflow permissions → Read and write permissions → Save**
 
-Ohne das kann sich der Monitor nicht selbst neu starten.
+Without this the monitor cannot restart itself.
 
-### 4. Monitor starten
+### 4. Start the Monitor
 
 **Actions → Saito Legends Restock Monitor → Run workflow → Run workflow**
 
 ---
 
-## Parameter anpassen
+## Adjusting Parameters
 
-Alle Einstellungen befinden sich in `.github/workflows/saito-monitor.yml` unter dem Abschnitt `env:`.
+All settings are in `.github/workflows/saito-monitor.yml` under the `env:` section.
 
 ```yaml
-- name: Monitor starten
+- name: Start monitor
   env:
     DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
     DISCORD_MENTION: "@everyone"
     POLL_INTERVAL: "12"
     MAX_RUNTIME: "20400"
-    ALERT_COOLDOWN: "900"
-    QUANTITY: "2"           # ← Menge im Checkout-Link
+    ALERT_COOLDOWN: "180"
+    QUANTITY: "2"           # ← quantity in the checkout link
     HEARTBEAT_HOURS: "0"
     STATUS_EVERY: "300"
     STATE_FILE: saito_state.json
-    WATCH: ${{ inputs.watch }}   # ← leer = die 3 Standard-Artikel
+    WATCH: ${{ inputs.watch }}   # ← empty = the 3 default products
 ```
 
-### Produkte ändern (`WATCH`)
+### Changing Products (`WATCH`)
 
-Standardmäßig werden diese 3 Artikel überwacht (in `saito_monitor.py` unter `DEFAULT_WATCH`):
+By default these 3 products are monitored (defined in `saito_monitor.py` under `DEFAULT_WATCH`):
 
 ```
 pre-order-sakura-winds-sl1a-20-pack-collectors-box
@@ -67,139 +67,139 @@ pre-order-sakura-winds-sl1a-20-pack-collectors-box-drift-games-edition
 10-booster-box
 ```
 
-Den Handle eines Artikels findest du in der Shop-URL:
-`saitolegends.com/products/`**`der-handle-steht-hier`**
+The handle of a product is found in the shop URL:
+`saitolegends.com/products/`**`the-handle-is-here`**
 
-**Einzelnen Artikel überwachen** — in der Workflow-Datei unter `env:` eintragen:
+**Watch a single product** — add to `env:` in the workflow file:
 ```yaml
 WATCH: "acrylic-slab-display-case"
 ```
 
-**Mehrere Artikel** (kommagetrennt):
+**Watch multiple products** (comma-separated):
 ```yaml
-WATCH: "artikel-handle-1,artikel-handle-2"
+WATCH: "product-handle-1,product-handle-2"
 ```
 
-**Gesamten Shop überwachen:**
+**Watch the entire shop:**
 ```yaml
 WATCH: "ALL"
 ```
-> Der erste Lauf setzt dabei nur die Grundlinie und alarmiert nicht sofort.
+> The first run only sets the baseline and does not alert immediately.
 
-Um die Standard-Artikel dauerhaft zu ändern, die Liste in `saito_monitor.py` bei `DEFAULT_WATCH` (Zeile 73) bearbeiten.
+To permanently change the default products, edit the `DEFAULT_WATCH` list in `saito_monitor.py` (line 73).
 
-### Menge ändern (`QUANTITY`)
+### Changing Quantity (`QUANTITY`)
 
-Bestimmt wie viele Stück des Artikels der Checkout-Link in den Warenkorb legt.
+Controls how many units the checkout link adds to the cart.
 
 ```yaml
-QUANTITY: "2"   # Checkout-Link legt 2 Stück in den Warenkorb
+QUANTITY: "2"   # checkout link adds 2 units to the cart
 ```
 
-### Alle verfügbaren Parameter
+### All Available Parameters
 
-| Variable | Standard | Bedeutung |
+| Variable | Default | Description |
 |---|---|---|
-| `DISCORD_WEBHOOK_URL` | — | Webhook-URL (Pflicht, als Secret) |
-| `DISCORD_MENTION` | `@everyone` | Ping im Alarm. Leer = kein Ping |
-| `POLL_INTERVAL` | `12` | Sekunden zwischen zwei Abfragen |
-| `WATCH` | 3 Standard-Artikel | Komma-Liste von Produkt-Handles oder `ALL` |
-| `QUANTITY` | `2` | Menge im Checkout-Direktlink |
-| `ALERT_COOLDOWN` | `900` | Sekunden Sperrzeit vor erneutem Alarm für dasselbe Produkt |
-| `MAX_RUNTIME` | `20400` | Laufzeit in Sekunden (5h40m), dann sauberer Neustart |
-| `HEARTBEAT_HOURS` | `0` | Lebenszeichen-Ping an Discord alle N Stunden (0 = aus) |
-| `STATUS_EVERY` | `300` | Statuszeile im Actions-Log alle N Sekunden (nicht Discord) |
-| `TELEGRAM_BOT_TOKEN` | — | Optional: Telegram als Zweitkanal |
-| `TELEGRAM_CHAT_ID` | — | Optional: Telegram als Zweitkanal |
+| `DISCORD_WEBHOOK_URL` | — | Webhook URL (required, store as secret) |
+| `DISCORD_MENTION` | `@everyone` | Ping in alert. Empty = no ping |
+| `POLL_INTERVAL` | `12` | Seconds between requests |
+| `WATCH` | 3 default products | Comma-list of product handles or `ALL` |
+| `QUANTITY` | `2` | Quantity in the direct checkout link |
+| `ALERT_COOLDOWN` | `180` | Seconds before re-alerting for the same product |
+| `MAX_RUNTIME` | `20400` | Runtime in seconds (5h40m), then clean restart |
+| `HEARTBEAT_HOURS` | `0` | Liveness ping to Discord every N hours (0 = off) |
+| `STATUS_EVERY` | `300` | Status line in Actions log every N seconds (not Discord) |
+| `TELEGRAM_BOT_TOKEN` | — | Optional: Telegram as second notification channel |
+| `TELEGRAM_CHAT_ID` | — | Optional: Telegram as second notification channel |
 
 ---
 
-## Notification testen
+## Testing Notifications
 
-Im Workflow-Tab auf **Run workflow** klicken und im Feld **watch** einen Handle eines verfügbaren Artikels eingeben, z. B.:
+Click **Run workflow** in the Actions tab and enter the handle of an available product in the **watch** field, e.g.:
 
 ```
 acrylic-slab-display-case
 ```
 
-Der Testlauf überwacht nur diesen Artikel, läuft 60 Sekunden, startet sich danach **nicht** selbst neu und schickt sofort einen Discord-Alarm da kein gespeicherter State vorhanden ist.
+The test run monitors only that product, runs for 60 seconds, does **not** restart itself, and fires a Discord alert immediately since there is no saved state.
 
 ---
 
-## Monitor stoppen
+## Stopping the Monitor
 
-Im Actions-Tab den laufenden Workflow-Run **Cancel** klicken. Der Monitor startet sich **nicht** neu wenn er manuell gecancelt wird — nur bei normalem Ende (5h40m) oder Fehler.
+Click **Cancel** on the active workflow run in the Actions tab. The monitor does **not** restart when manually cancelled — only after a normal exit (5h40m) or an error.
 
 ---
 
-## 24/7-Betrieb ohne öffentliches Repository
+## 24/7 Operation Without a Public Repository
 
-GitHub Actions gibt für **private** Repos nur 2.000 Freiminuten/Monat. Dieser Monitor verbraucht ~1.360 Minuten/Tag, was das Limit in ~1,5 Tagen erschöpft. Drei Alternativen:
+GitHub Actions only gives **2,000 free minutes/month** for private repos. This monitor uses ~1,360 minutes/day, exhausting the limit in ~1.5 days. Three alternatives:
 
-### Option 1: Self-hosted Runner (kostenlos, empfohlen)
+### Option 1: Self-hosted Runner (free, recommended)
 
-Einen eigenen Runner auf einem Gerät registrieren (Raspberry Pi, alter Laptop, NAS, VPS):
+Register your own runner on any device (Raspberry Pi, old laptop, NAS, VPS):
 
-**Settings → Actions → Runners → New self-hosted runner** → Anleitung folgen.
+**Settings → Actions → Runners → New self-hosted runner** → follow the instructions.
 
-Danach in der Workflow-Datei eine Zeile ändern:
+Then change one line in the workflow file:
 
 ```yaml
-runs-on: self-hosted   # statt ubuntu-latest
+runs-on: self-hosted   # instead of ubuntu-latest
 ```
 
-Kein Minutenlimit, läuft auf eigener Hardware, komplett kostenlos.
+No minute limits, runs on your own hardware, completely free.
 
-### Option 2: Docker auf Fly.io (kostenlos, kein lokales Gerät nötig)
+### Option 2: Docker on Fly.io (free, no local device needed)
 
-Ein `Dockerfile` liegt bereits im Repo. Fly.io bietet ein kostenloses Tier das für diesen Use-Case ausreicht:
+A `Dockerfile` is already included. Fly.io offers a free tier that is sufficient for this use case:
 
 ```bash
-# Fly CLI installieren: https://fly.io/docs/hands-on/install-flyctl/
+# Install Fly CLI: https://fly.io/docs/hands-on/install-flyctl/
 fly launch --no-deploy
 fly secrets set DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 fly volumes create saito_data --size 1
 fly deploy
 ```
 
-Der State wird im Volume unter `/data/saito_state.json` gespeichert und überlebt Neustarts.
+The state is stored in the volume at `/data/saito_state.json` and survives restarts.
 
 ### Option 3: Railway
 
-Alternativ zu Fly.io — ebenfalls Docker-basiert, kostenloses Tier vorhanden:
+Alternative to Fly.io — also Docker-based, free tier available:
 
 1. [railway.app](https://railway.app) → New Project → Deploy from GitHub Repo
-2. Environment Variable `DISCORD_WEBHOOK_URL` setzen
-3. Volume unter `/data` einbinden für State-Persistenz
+2. Set environment variable `DISCORD_WEBHOOK_URL`
+3. Mount a volume at `/data` for state persistence
 
-### Option 4: GitHub Pro ($4/Monat)
+### Option 4: GitHub Pro ($4/month)
 
-3.000 Freiminuten — reicht für ~2 Tage Dauerbetrieb, also immer noch zu wenig für echten 24/7-Betrieb.
+3,000 free minutes — enough for ~2 days of continuous operation, still not sufficient for true 24/7 use.
 
 ---
 
-## Lokaler Betrieb (zum Testen)
+## Running Locally (for testing)
 
 ```bash
 export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
 python3 saito_monitor.py
 ```
 
-Mit `--quiet-start` wird keine Startmeldung an Discord geschickt:
+With `--quiet-start` no startup message is sent to Discord:
 
 ```bash
 python3 saito_monitor.py --quiet-start
 ```
 
-Stoppen mit **Strg+C**.
+Stop with **Ctrl+C**.
 
 ---
 
-## Projektstruktur
+## Project Structure
 
 ```
-saito_monitor.py                    # Gesamte Anwendung, nur Python-Stdlib
-.github/workflows/saito-monitor.yml # GitHub Actions Workflow
-Dockerfile                          # Für Fly.io / Railway / lokalen Docker
-ANLEITUNG.md                        # Ausführliche Schritt-für-Schritt-Anleitung
+saito_monitor.py                    # Entire application, Python stdlib only
+.github/workflows/saito-monitor.yml # GitHub Actions workflow
+Dockerfile                          # For Fly.io / Railway / local Docker
+ANLEITUNG.md                        # Detailed step-by-step guide (German)
 ```
