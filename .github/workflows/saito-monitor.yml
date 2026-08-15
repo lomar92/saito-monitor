@@ -47,6 +47,8 @@ jobs:
           STATUS_EVERY: "300"
           STATE_FILE: saito_state.json
           WATCH: ${{ inputs.watch }}
+          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
+          WHATSAPP_APIKEY: ${{ secrets.WHATSAPP_APIKEY }}
         run: python saito_monitor.py
 
       - uses: actions/cache/save@v4

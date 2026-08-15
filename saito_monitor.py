@@ -57,6 +57,9 @@ DISCORD_MENTION = os.environ.get("DISCORD_MENTION", "@everyone").strip()
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
 
+WA_PHONE = os.environ.get("WHATSAPP_PHONE", "").strip()
+WA_APIKEY = os.environ.get("WHATSAPP_APIKEY", "").strip()
+
 POLL_INTERVAL = float(os.environ.get("POLL_INTERVAL", "12"))
 MAX_RUNTIME = float(os.environ.get("MAX_RUNTIME", "0"))
 ALERT_COOLDOWN = float(os.environ.get("ALERT_COOLDOWN", "900"))
@@ -299,9 +302,36 @@ def telegram_send(alert, retries=3):
     return False
 
 
+def whatsapp_send(alert, retries=3):
+    """Sendet eine WhatsApp-Nachricht via CallMeBot."""
+    if not WA_PHONE or not WA_APIKEY:
+        return False
+
+    if alert["kind"] == "restock":
+        text = f"RESTOCK: {alert['name']} | £{alert['price']} | {alert['cart_link']}"
+    else:
+        text = alert.get("text", "")
+
+    url = (
+        f"https://api.callmebot.com/whatsapp.php"
+        f"?phone={WA_PHONE}&apikey={WA_APIKEY}"
+        f"&text={urllib.parse.quote(text)}"
+    )
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            with urllib.request.urlopen(req, timeout=15, context=_ssl_ctx) as resp:
+                if 200 <= resp.status < 300:
+                    return True
+        except Exception as exc:  # noqa: BLE001
+            log(f"!! WhatsApp-Versuch {attempt}/{retries} fehlgeschlagen: {exc}")
+        time.sleep(2 * attempt)
+    return False
+
+
 def notify(alert):
     """Verschickt ueber alle konfigurierten Kanaele. True = mindestens einer hat geklappt."""
-    results = [discord_send(alert), telegram_send(alert)]
+    results = [discord_send(alert), telegram_send(alert), whatsapp_send(alert)]
     if not any(results):
         if not DISCORD_WEBHOOK and not BOT_TOKEN:
             log("!! Kein Benachrichtigungskanal konfiguriert. Nachricht nur hier:")

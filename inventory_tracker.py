@@ -29,6 +29,8 @@ SHOP = "https://saitolegends.com"
 CATALOG_URL = SHOP + "/products.json?limit=250"
 
 DISCORD_WEBHOOK = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+WA_PHONE = os.environ.get("WHATSAPP_PHONE", "").strip()
+WA_APIKEY = os.environ.get("WHATSAPP_APIKEY", "").strip()
 POLL_INTERVAL = float(os.environ.get("POLL_INTERVAL", "30"))
 STATE_FILE = os.environ.get(
     "STATE_FILE",
@@ -109,6 +111,26 @@ def discord_send(payload, retries=3):
     return False
 
 
+def whatsapp_send(text, retries=3):
+    if not WA_PHONE or not WA_APIKEY:
+        return False
+    url = (
+        f"https://api.callmebot.com/whatsapp.php"
+        f"?phone={WA_PHONE}&apikey={WA_APIKEY}"
+        f"&text={urllib.parse.quote(text)}"
+    )
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+            with urllib.request.urlopen(req, timeout=15, context=_ssl_ctx) as resp:
+                if 200 <= resp.status < 300:
+                    return True
+        except Exception as exc:
+            log(f"!! WhatsApp attempt {attempt}/{retries} failed: {exc}")
+        time.sleep(2 * attempt)
+    return False
+
+
 def notify_change(variant, is_available):
     if is_available:
         emoji, status, color = "🟢", "BACK IN STOCK", 0x2ECC71
@@ -131,6 +153,10 @@ def notify_change(variant, is_available):
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }]
     })
+    wa_text = f"{emoji} {status}: {variant['name']} | £{variant['price']}"
+    if is_available:
+        wa_text += f" | {cart_link}"
+    whatsapp_send(wa_text)
 
 
 def send_overview(variants):

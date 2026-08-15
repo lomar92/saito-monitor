@@ -38,6 +38,8 @@ jobs:
           MAX_RUNTIME: "20400"
           STATE_FILE: inventory_state.json
           KEYWORDS: "box,booster,blister,sakura,playmat"
+          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
+          WHATSAPP_APIKEY: ${{ secrets.WHATSAPP_APIKEY }}
         run: python inventory_tracker.py
 
       - uses: actions/cache/save@v4
