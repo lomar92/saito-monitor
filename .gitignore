@@ -1,6 +1,10 @@
 CLAUDE.md
+ANLEITUNG.md
+.claude/
 saito_state.json
 saito_state.json.tmp
+inventory_state.json
+inventory_state.json.tmp
 __pycache__/
 *.pyc
 .DS_Store

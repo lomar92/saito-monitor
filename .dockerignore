@@ -1,0 +1,9 @@
+# flyctl launch added from .gitignore
+**/CLAUDE.md
+**/saito_state.json
+**/saito_state.json.tmp
+**/__pycache__
+**/*.pyc
+**/.DS_Store
+**/.env
+fly.toml
