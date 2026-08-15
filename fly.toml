@@ -1,0 +1,29 @@
+# fly.toml — saito-monitor
+# Zwei Prozesse: restock monitor + inventory tracker
+# Jeder laeuft als eigene Machine auf Fly.io.
+
+app = 'saito-monitor'
+primary_region = 'fra'
+
+[build]
+
+[processes]
+  monitor = "python saito_monitor.py"
+  tracker = "python inventory_tracker.py"
+
+# Volume fuer den Restock-Monitor
+[[mounts]]
+  source = 'saito_data'
+  destination = '/data'
+  processes = ['monitor']
+
+# Volume fuer den Inventory-Tracker
+[[mounts]]
+  source = 'tracker_data'
+  destination = '/data'
+  processes = ['tracker']
+
+[[vm]]
+  memory = '256mb'
+  cpus = 1
+  processes = ['monitor', 'tracker']

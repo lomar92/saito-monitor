@@ -1,14 +1,14 @@
-# Alternative zu GitHub Actions: Dauerbetrieb auf Fly.io / Railway / Render.
+# Dauerbetrieb auf Fly.io / Railway / Render.
+# Zwei Prozesse moeglich: saito_monitor.py (Restock) + inventory_tracker.py (Bestandsaenderungen)
 FROM python:3.12-slim
 
 WORKDIR /app
-COPY saito_monitor.py .
+COPY saito_monitor.py inventory_tracker.py ./
 
-# DISCORD_WEBHOOK_URL wird als Secret gesetzt, nicht hier.
 ENV POLL_INTERVAL=12 \
     DISCORD_MENTION=@everyone \
-    ALERT_COOLDOWN=900 \
-    HEARTBEAT_HOURS=12 \
+    ALERT_COOLDOWN=180 \
+    HEARTBEAT_HOURS=0 \
     STATE_FILE=/data/saito_state.json \
     PYTHONUNBUFFERED=1
 
