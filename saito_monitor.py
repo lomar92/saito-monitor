@@ -239,6 +239,26 @@ def discord_send(alert, retries=3):
             ],
             "allowed_mentions": {"parse": ["everyone"]},
         }
+    elif alert["kind"] == "combined":
+        names_list = "\n".join(f"• {n}" for n in alert["names"])
+        payload = {
+            "embeds": [
+                {
+                    "title": "🛒 ALLE VERFÜGBAREN ARTIKEL — EIN KLICK",
+                    "description": (
+                        f"**[➡️ ALLE IN DEN WARENKORB ({len(alert['names'])} Artikel)]"
+                        f"({alert['cart_link']})**\n\n"
+                        f"{names_list}\n\n"
+                        f"*Je {QUANTITY}x pro Artikel*"
+                    ),
+                    "url": alert["cart_link"],
+                    "color": 0xF5A623,
+                    "footer": {"text": "Saito Legends Restock Monitor"},
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            ],
+            "allowed_mentions": {"parse": []},
+        }
     else:
         payload = {
             "content": alert["text"],
@@ -309,6 +329,8 @@ def whatsapp_send(alert, retries=3):
 
     if alert["kind"] == "restock":
         text = f"RESTOCK: {alert['name']} | £{alert['price']} | {alert['cart_link']}"
+    elif alert["kind"] == "combined":
+        text = f"ALLE IN EINEN WARENKORB ({len(alert['names'])}x): {alert['cart_link']}"
     else:
         text = alert.get("text", "")
 
@@ -408,6 +430,21 @@ def build_alert(v):
     }
 
 
+def build_combined_alert(available_variants):
+    items = ",".join(f"{v['variant_id']}:{QUANTITY}" for v in available_variants)
+    names = []
+    for v in available_variants:
+        n = v["product"]
+        if v["variant"] and v["variant"].lower() != "default title":
+            n += f" ({v['variant']})"
+        names.append(n)
+    return {
+        "kind": "combined",
+        "names": names,
+        "cart_link": f"{SHOP}/cart/{items}",
+    }
+
+
 def run_once(state):
     """Eine Abfragerunde. Gibt die Anzahl neuer Alarme zurueck."""
     variants = fetch_variants()
@@ -449,6 +486,12 @@ def run_once(state):
             log(f"    wieder ausverkauft: {v['product']}")
 
         state["available"][key] = is_available
+
+    if alerts > 0:
+        available_now = [v for v in variants if v["available"]]
+        if len(available_now) >= 2:
+            log(f">>> Kombinierter Cart-Link fuer {len(available_now)} verfuegbare Artikel")
+            notify(build_combined_alert(available_now))
 
     return alerts
 
