@@ -1,4 +1,4 @@
-name: Monitor A
+name: Restock Monitor
 
 on:
   workflow_dispatch:

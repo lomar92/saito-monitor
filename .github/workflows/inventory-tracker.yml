@@ -1,4 +1,4 @@
-name: Monitor B
+name: Inventory Tracker
 
 on:
   workflow_dispatch:
