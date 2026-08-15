@@ -37,7 +37,7 @@ jobs:
           POLL_INTERVAL: "30"
           MAX_RUNTIME: "20400"
           STATE_FILE: inventory_state.json
-          KEYWORDS: "box,booster,blister,sakura"
+          KEYWORDS: "box,booster,blister,sakura,playmat"
         run: python inventory_tracker.py
 
       - uses: actions/cache/save@v4
