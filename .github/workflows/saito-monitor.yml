@@ -1,34 +1,24 @@
-name: Saito Legends Restock Monitor
-
-# Laeuft rund um die Uhr. Ein GitHub-Actions-Job darf maximal 6 Stunden laufen,
-# deshalb laeuft der Monitor 5h40m und startet sich danach selbst neu.
-# Der Zeitplan alle 3 Stunden ist das Sicherheitsnetz, falls ein Lauf abstuerzt.
+name: Monitor A
 
 on:
   workflow_dispatch:
     inputs:
       watch:
-        description: >-
-          Nur fuer Tests: Produkt-Handle, das ueberwacht werden soll.
-          Leer lassen fuer den Normalbetrieb. Beispiel zum Pruefen der
-          Alarmkette: saito-legends-classic-sticker (ist auf Lager, loest
-          also sofort einen echten Alarm aus).
         required: false
         default: ""
   schedule:
     - cron: "0 */3 * * *"
 
-# Verhindert, dass zwei Laeufe gleichzeitig laufen und doppelt alarmieren.
 concurrency:
-  group: saito-monitor
+  group: monitor-a
   cancel-in-progress: false
 
 permissions:
-  actions: write   # noetig, damit der Lauf sich selbst neu starten kann
-  contents: read   # noetig fuer actions/checkout bei privaten Repos
+  actions: write
+  contents: read
 
 jobs:
-  monitor:
+  run:
     runs-on: ubuntu-latest
     timeout-minutes: 350
 
@@ -39,42 +29,33 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Zustand zwischen den Laeufen erhalten, damit nach einem Neustart nicht
-      # erneut fuer denselben Restock alarmiert wird.
-      - name: Zustand laden
-        uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v4
         with:
           path: saito_state.json
-          key: saito-state-${{ github.run_id }}
-          restore-keys: saito-state-
+          key: state-a-${{ github.run_id }}
+          restore-keys: state-a-
 
-      - name: Monitor starten
+      - name: Run
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_MENTION: "@everyone"
           POLL_INTERVAL: "12"
-          MAX_RUNTIME: ${{ inputs.watch != '' && '60' || '20400' }}  # Test: 60s, Normal: 5h40m
+          MAX_RUNTIME: ${{ inputs.watch != '' && '60' || '20400' }}
           ALERT_COOLDOWN: "180"
           QUANTITY: "2"
-          HEARTBEAT_HOURS: "0"      # aus - die Startmeldung alle 5h40m genuegt
-          STATUS_EVERY: "300"       # alle 5 Min eine Statuszeile ins Protokoll
+          HEARTBEAT_HOURS: "0"
+          STATUS_EVERY: "300"
           STATE_FILE: saito_state.json
-          # Leer im Normalbetrieb -> die drei 1st-Edition-Boxen.
-          # Beim manuellen Start kann hier ein Testprodukt gesetzt werden.
           WATCH: ${{ inputs.watch }}
         run: python saito_monitor.py
 
-      - name: Zustand sichern
+      - uses: actions/cache/save@v4
         if: always()
-        uses: actions/cache/save@v4
         with:
           path: saito_state.json
-          key: saito-state-${{ github.run_id }}
+          key: state-a-${{ github.run_id }}
 
-      # Startet den naechsten Lauf bei normalem Ende oder Fehler.
-      # Nicht bei Cancel (damit man den Monitor sauber stoppen kann)
-      # und nicht bei Testlaeufen (watch-Input gesetzt).
-      - name: Naechsten Lauf starten
+      - name: Next
         if: (success() || failure()) && inputs.watch == ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
