@@ -1,0 +1,59 @@
+name: Saito Legends Inventory Tracker
+
+# Laeuft parallel zum Restock-Monitor.
+# Alarmiert bei JEDER Bestandsaenderung (rein UND raus) fuer
+# alle Produkte mit Keywords: box, booster, blister, sakura.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 */3 * * *"   # Versetzt zum Monitor-Cron (der laeuft zur vollen Stunde)
+
+concurrency:
+  group: inventory-tracker
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  tracker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Zustand laden
+        uses: actions/cache/restore@v4
+        with:
+          path: inventory_state.json
+          key: inventory-state-${{ github.run_id }}
+          restore-keys: inventory-state-
+
+      - name: Tracker starten
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          POLL_INTERVAL: "30"
+          MAX_RUNTIME: "20400"
+          STATE_FILE: inventory_state.json
+          KEYWORDS: "box,booster,blister,sakura"
+        run: python inventory_tracker.py
+
+      - name: Zustand sichern
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: inventory_state.json
+          key: inventory-state-${{ github.run_id }}
+
+      - name: Naechsten Lauf starten
+        if: success() || failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run inventory-tracker.yml --ref ${{ github.ref_name }}
